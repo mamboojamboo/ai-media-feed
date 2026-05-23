@@ -1,36 +1,176 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Justified Mixed Media Feed
 
-## Getting Started
+Production-style test assignment for a Senior Frontend Engineer role: a virtualized AI media feed with 2,000 mixed image/video items laid out as justified rows.
 
-First, run the development server:
+## Setup
+
+This repository is locked with `pnpm`:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For parity with npm-based review environments, the scripts are standard Next scripts:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+npm run build
+```
 
-## Learn More
+## What Is Implemented
 
-To learn more about Next.js, take a look at the following resources:
+- R1: custom justified-row layout algorithm, no CSS masonry/grid shortcut.
+- R2: 2,000 mixed media items with row-level TanStack Virtual virtualization.
+- R3: user-controlled density (`2 3 4 5 6 8`) with item-based scroll anchoring.
+- R4: lazy/proximity media loading and viewport-driven video playback.
+- S2: velocity-based fast-scroll grace.
+- S3: bounded browser-side object URL media cache plus video playback state.
+- S4: right-sized image and poster source selection.
+- S5: ResizeObserver + requestAnimationFrame resize handling with anchor restore.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Why Next.js 16
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Next.js is used for the app shell, server-side dataset loading, runtime validation, caching boundary, and easy review deployment. The feed itself is a client component because virtualization, viewport media playback, resize handling, and media cache are browser-side concerns.
 
-## Deploy on Vercel
+The root route is a Server Component (`src/app/page.tsx`) that calls `getMediaFeed()`. The interactive feed starts below that boundary as a client island.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Dataset
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The static dataset lives at `src/shared/data/media-dataset.json` and contains 2,000 items:
+
+- 1,400 images, 600 videos.
+- Images use Picsum URLs such as `https://picsum.photos/id/{id}/{width}/{height}`.
+- Videos reuse public Google sample MP4 files from `commondatastorage.googleapis.com`.
+- Video posters also use Picsum, with multiple width buckets.
+- Aspect ratios are generated from realistic families: `1:1`, `4:5`, `3:4`, `9:16`, `16:9`, `21:9`, plus small variations.
+
+The dataset was generated deterministically. Reusing 12 physical video files across 600 video items is intentional: the assignment is about layout, virtualization, media lifecycle, cache boundaries, and playback state, not about sourcing 600 unique encoded clips.
+
+## Architecture
+
+The code is FSD-inspired:
+
+- `src/app`: Next.js App Router shell.
+- `src/views/media-feed`: route composition layer. It is named `views` instead of `pages` to avoid colliding with Next's Pages Router folder convention.
+- `src/widgets/media-feed`: feed composition, header, debug panel.
+- `src/entities/media`: media schema, types, data access, source picking.
+- `src/features/justified-media-feed`: layout algorithm, virtualization, rows, cards, resize, scroll anchor, scroll velocity.
+- `src/features/feed-density-control`: density UI and model.
+- `src/features/viewport-video-playback`: viewport playback hook and thresholds.
+- `src/shared/media-cache`: browser-side cache infrastructure.
+- `src/shared/ui`: shadcn-style local UI primitives.
+
+`getMediaFeed()` uses `use cache`, `cacheLife("max")`, and Zod runtime validation. The schema checks required fields, non-empty sources, video posters, positive dimensions, and aspect ratio consistency.
+
+## Layout Algorithm
+
+`computeJustifiedRows(items, options)` is a pure function with no React or DOM dependencies.
+
+It accumulates items until the projected row is close to the target density, then computes:
+
+```ts
+availableWidth = containerWidth - gap * (items.length - 1)
+rowHeight = availableWidth / sumAspectRatios
+```
+
+Each item width is `rowHeight * aspectRatio`, so the original aspect ratio is preserved without crop. Full rows fill the container width; the last row is capped by `targetRowHeight` and `maxLastRowHeight`, so a sparse final row is allowed to be shorter instead of being stretched into a giant row.
+
+## Virtualization
+
+TanStack Virtual handles generic scroll virtualization. It does not compute justified rows. The app first computes rows using a custom layout algorithm, then virtualizes those rows.
+
+The virtualizer count is `rows.length`, not `items.length`. Rendered DOM stays bounded because only visible/overscan rows mount, and each row renders only its own media cards.
+
+## Scroll Anchoring
+
+Density changes and resize do not preserve raw `scrollTop`. Instead, the feed captures an item near the top of the viewport:
+
+```ts
+type ScrollAnchor = {
+  itemId: string
+  offsetTopInViewport: number
+}
+```
+
+After rows are recomputed, the app finds the new top for the same item and restores `scrollTop = newItemTop - offsetTopInViewport` inside a layout effect. The same mechanism is wired into ResizeObserver updates.
+
+## Media Loading And Playback
+
+Cards have proximity stages: `far`, `near`, and `visible`.
+
+- `far`: no image/video source is attached; a lightweight placeholder renders.
+- `near`: images and video posters can be fetched and cached.
+- `visible`: video may attach its MP4 source and play if scroll velocity is calm.
+
+Video playback is viewport-driven:
+
+- `VIDEO_PLAY_THRESHOLD = 0.45`
+- `VIDEO_PAUSE_THRESHOLD = 0.25`
+- videos are `muted`, `playsInline`, and `loop`
+- `video.play()` promise rejections are handled
+- `currentTime`, metadata, can-play state, and status are saved to the cache on pause/unmount
+
+Multiple visible videos may play at once. During fast scroll, new videos are not started.
+
+## Media Cache
+
+The app uses a bounded object URL media cache. It preserves loaded image/poster assets and video playback state across virtualization. The cache is LRU-limited to avoid unbounded memory growth. Video blobs are cached only for a limited number of short clips; otherwise the app relies on browser HTTP cache.
+
+Current limits:
+
+- `maxBytes`: 150 MB
+- `maxImageEntries`: 300
+- `maxPosterEntries`: 300
+- `maxVideoEntries`: 20
+
+On eviction, object URLs are revoked with `URL.revokeObjectURL()`. The app does not try to preserve decoded browser frames; it preserves controlled object URLs, loaded state, and playback state.
+
+## Right-Sized Media
+
+Images and posters use width buckets:
+
+```ts
+[320, 480, 640, 960, 1280, 1600]
+```
+
+Requested width is based on `cellWidth * devicePixelRatio`. If the cache already has an asset with `bestLoadedWidth >= requestedWidth`, that object URL is reused. Otherwise the next larger source is fetched and cached.
+
+For videos, source selection supports multiple encoded widths when the dataset provides them. The sample dataset points both encoded widths at the same public MP4 URL, so right-sized behavior is complete for images/posters and structurally supported for video sources.
+
+## Fast-Scroll Grace
+
+`useScrollVelocity()` tracks `px/ms` and direction on the feed scroll container. If absolute velocity is above `1.5 px/ms`, the feed enters fast-scroll mode:
+
+- new videos do not start
+- video sources are not attached just because an item flashes through the viewport
+- uncached media loading is gated
+- cached posters/images can still render
+
+The debug panel shows velocity and fast-scroll state.
+
+## Skipped Stretch Goals
+
+I intentionally skipped full FLIP transitions for column-count changes because preserving virtualization correctness, scroll anchoring, and resize stability was more important for this task.
+
+The scroll-anchor mechanism could be reused for prepend scenarios, but I did not add a live-data demo to avoid feature creep.
+
+## Known Issues / Next Steps
+
+- Browser-level visual verification depends on a local browser automation tool. The code has been verified with `pnpm lint`, `pnpm build`, and local HTTP rendering.
+- Public sample MP4s can be slow depending on network and CDN behavior. The renderer avoids eager video blob downloads for that reason.
+- A production product could add a small integration test around row geometry and anchor restore.
+
+## Loom Walkthrough Plan
+
+1. Show the app running with 2,000 mixed items.
+2. Scroll through the feed and point at bounded visible rows/mounted items in the debug panel.
+3. Show videos autoplay when visible and pause offscreen.
+4. Scroll away and back to show video position restore.
+5. Change items per row and show anchor preservation.
+6. Resize the browser and show stable justified rows.
+7. Fast-scroll and point at the fast-scroll indicator.
+8. Mention object URL cache, right-sized sources, and skipped S1/S6 trade-offs.
