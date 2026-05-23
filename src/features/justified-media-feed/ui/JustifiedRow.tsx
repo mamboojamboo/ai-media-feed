@@ -1,8 +1,9 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, RefObject } from "react";
 
 import type { MediaItem } from "@/entities/media/model/media.types";
+import { MediaCache } from "@/shared/media-cache/model/MediaCache";
 
 import { MediaCard } from "./MediaCard";
 import type { JustifiedRow as JustifiedRowType } from "../model/justified-feed.types";
@@ -10,10 +11,22 @@ import type { JustifiedRow as JustifiedRowType } from "../model/justified-feed.t
 type Props = {
   row: JustifiedRowType;
   itemsById: Map<string, MediaItem>;
+  rootRef: RefObject<HTMLElement | null>;
+  mediaCache: MediaCache;
+  isFastScrolling: boolean;
+  onCacheChange: () => void;
   style?: CSSProperties;
 };
 
-export function JustifiedRow({ row, itemsById, style }: Props) {
+export function JustifiedRow({
+  row,
+  itemsById,
+  rootRef,
+  mediaCache,
+  isFastScrolling,
+  onCacheChange,
+  style,
+}: Props) {
   return (
     <div style={{ ...style, height: row.height }}>
       {row.items.map((rowItem) => {
@@ -33,7 +46,14 @@ export function JustifiedRow({ row, itemsById, style }: Props) {
               height: rowItem.height,
             }}
           >
-            <MediaCard item={item} />
+            <MediaCard
+              item={item}
+              width={rowItem.width}
+              rootRef={rootRef}
+              mediaCache={mediaCache}
+              isFastScrolling={isFastScrolling}
+              onCacheChange={onCacheChange}
+            />
           </div>
         );
       })}

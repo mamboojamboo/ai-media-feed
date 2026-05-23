@@ -1,0 +1,2 @@
+export const VIDEO_PLAY_THRESHOLD = 0.45;
+export const VIDEO_PAUSE_THRESHOLD = 0.25;

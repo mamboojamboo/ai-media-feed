@@ -7,6 +7,9 @@ import type { MediaItem } from "@/entities/media/model/media.types";
 import { getMediaAspectRatio } from "@/entities/media/lib/get-media-aspect-ratio";
 import type { FeedDensity } from "@/features/feed-density-control/model/feed-density.types";
 import { cn } from "@/shared/lib/cn";
+import { rafThrottle } from "@/shared/lib/raf-throttle";
+import { MediaCache } from "@/shared/media-cache/model/MediaCache";
+import type { MediaCacheStats } from "@/shared/media-cache/model/media-cache.types";
 
 import { JustifiedRow } from "./JustifiedRow";
 import { useContainerSize } from "../hooks/use-container-size";
@@ -50,6 +53,31 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
 >(({ mediaItems, density, onMetricsChange, className }, ref) => {
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const mediaCache = React.useMemo(() => new MediaCache(), []);
+  const [cacheStats, setCacheStats] = React.useState<MediaCacheStats>(() =>
+    mediaCache.getStats(),
+  );
+  const notifyCacheChange = React.useMemo(
+    () =>
+      rafThrottle(() => {
+        setCacheStats((previousStats) => {
+          const nextStats = mediaCache.getStats();
+
+          if (
+            previousStats.entries === nextStats.entries &&
+            previousStats.imageEntries === nextStats.imageEntries &&
+            previousStats.posterEntries === nextStats.posterEntries &&
+            previousStats.videoEntries === nextStats.videoEntries &&
+            previousStats.totalBytes === nextStats.totalBytes
+          ) {
+            return previousStats;
+          }
+
+          return nextStats;
+        });
+      }),
+    [mediaCache],
+  );
   const itemsById = React.useMemo(
     () => new Map(mediaItems.map((item) => [item.id, item])),
     [mediaItems],
@@ -111,6 +139,13 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
 
+  React.useEffect(
+    () => () => {
+      mediaCache.dispose();
+    },
+    [mediaCache],
+  );
+
   React.useEffect(() => {
     const mountedItems = virtualRows.reduce(
       (sum, virtualRow) => sum + (activeRows[virtualRow.index]?.items.length ?? 0),
@@ -124,8 +159,8 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
       density,
       scrollVelocity: scrollVelocity.velocityPxPerMs,
       isFastScrolling: scrollVelocity.isFastScrolling,
-      cacheEntries: 0,
-      cacheSizeMb: 0,
+      cacheEntries: cacheStats.entries,
+      cacheSizeMb: cacheStats.totalBytes / 1024 / 1024,
     };
     const nextMetricsKey = [
       nextMetrics.items,
@@ -143,7 +178,15 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
       lastMetricsKeyRef.current = nextMetricsKey;
       onMetricsChange(nextMetrics);
     }
-  }, [activeRows, density, mediaItems.length, onMetricsChange, scrollVelocity, virtualRows]);
+  }, [
+    activeRows,
+    cacheStats,
+    density,
+    mediaItems.length,
+    onMetricsChange,
+    scrollVelocity,
+    virtualRows,
+  ]);
 
   return (
     <div ref={scrollRef} className={cn("min-h-0 flex-1 overflow-y-auto", className)}>
@@ -167,6 +210,10 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
                   key={row.id}
                   row={row}
                   itemsById={itemsById}
+                  rootRef={scrollRef}
+                  mediaCache={mediaCache}
+                  isFastScrolling={scrollVelocity.isFastScrolling}
+                  onCacheChange={notifyCacheChange}
                   style={{
                     position: "absolute",
                     left: 0,
