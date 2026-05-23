@@ -153,8 +153,9 @@ For videos, source selection supports multiple encoded widths when Pexels provid
 `useScrollVelocity()` tracks `px/ms` and direction on the feed scroll container. If absolute velocity is above `1.5 px/ms`, the feed enters fast-scroll mode:
 
 - new videos do not start
-- new video playback does not start just because an item flashes through the viewport
-- uncached media loading is gated
+- new video sources are not attached just because an item flashes through the viewport
+- already-attached video sources stay attached to avoid visual jumps
+- uncached media loading is deferred while the virtualizer is actively scrolling and resumes after a short idle grace
 - cached posters/images can still render
 
 The debug panel shows velocity and fast-scroll state.

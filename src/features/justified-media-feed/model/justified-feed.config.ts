@@ -1,6 +1,6 @@
 export const JUSTIFIED_FEED_GAP = 10;
 export const JUSTIFIED_FEED_ROW_GAP = 10;
-export const JUSTIFIED_FEED_OVERSCAN = 6;
+export const JUSTIFIED_FEED_OVERSCAN = 3;
 export const DEFAULT_ROW_HEIGHT = 220;
 
 export const ROW_HEIGHT_LIMITS = {

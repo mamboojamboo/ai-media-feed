@@ -35,6 +35,8 @@ export type MediaCacheEntry = {
 
 export type MediaCacheStats = {
   entries: number;
+  assetEntries: number;
+  stateOnlyEntries: number;
   imageEntries: number;
   posterEntries: number;
   videoEntries: number;

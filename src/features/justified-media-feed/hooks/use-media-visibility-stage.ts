@@ -29,7 +29,7 @@ export function useMediaVisibilityStage(
       },
       {
         root,
-        rootMargin: "700px 0px",
+        rootMargin: "320px 0px",
         threshold: [0, 0.01, 0.25, 0.35, 0.45, 0.75, 1],
       },
     );

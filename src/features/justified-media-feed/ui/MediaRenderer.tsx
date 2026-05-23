@@ -21,6 +21,7 @@ type Props = {
   rootRef: React.RefObject<HTMLElement | null>;
   mediaCache: MediaCache;
   isFastScrolling: boolean;
+  isMediaLoadingDeferred: boolean;
   onCacheChange: () => void;
 };
 
@@ -44,10 +45,10 @@ function ImageRenderer({
   width,
   stage,
   mediaCache,
-  isFastScrolling,
+  isMediaLoadingDeferred,
   onCacheChange,
 }: Props) {
-  const enabled = stage !== "far" && !isFastScrolling;
+  const enabled = stage !== "far" && !isMediaLoadingDeferred;
   const { asset, status } = useCachedMediaAsset({
     id: item.id,
     sources: item.sources,
@@ -81,6 +82,7 @@ function VideoRenderer({
   rootRef,
   mediaCache,
   isFastScrolling,
+  isMediaLoadingDeferred,
   onCacheChange,
 }: Props) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
@@ -96,20 +98,27 @@ function VideoRenderer({
     width,
     kind: "poster",
     mediaCache,
-    enabled: stage !== "far" && !isFastScrolling,
+    enabled: stage !== "far" && !isMediaLoadingDeferred,
     onCacheChange,
   });
   const videoState = mediaCache.getVideoState(item.id);
   const videoSource = pickMediaSource(item.sources, requestedWidth);
   const videoAsset = mediaCache.get(item.id)?.video?.asset;
-  const shouldAttachVideo = stage !== "far";
+  const hasCachedVideoReadiness = Boolean(
+    videoState?.metadataLoaded || videoState?.canPlay || videoState?.status === "loaded",
+  );
+  const shouldAttachVideo =
+    stage !== "far" &&
+    (hasVideoFrame ||
+      hasCachedVideoReadiness ||
+      (stage === "visible" && !isMediaLoadingDeferred));
 
   useViewportVideoPlayback({
     id: item.id,
     videoRef,
     rootRef,
     mediaCache,
-    enabled: shouldAttachVideo && stage === "visible" && !isFastScrolling,
+    enabled: shouldAttachVideo && stage === "visible" && !isMediaLoadingDeferred,
     isFastScrolling,
     onCacheChange,
   });

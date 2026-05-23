@@ -32,7 +32,9 @@ export type MediaFeedMetrics = {
   density: FeedDensity;
   scrollVelocity: number;
   isFastScrolling: boolean;
+  isMediaLoadingDeferred: boolean;
   cacheEntries: number;
+  cacheStateEntries: number;
   cacheSizeMb: number;
 };
 
@@ -65,6 +67,8 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
 
           if (
             previousStats.entries === nextStats.entries &&
+            previousStats.assetEntries === nextStats.assetEntries &&
+            previousStats.stateOnlyEntries === nextStats.stateOnlyEntries &&
             previousStats.imageEntries === nextStats.imageEntries &&
             previousStats.posterEntries === nextStats.posterEntries &&
             previousStats.videoEntries === nextStats.videoEntries &&
@@ -135,9 +139,12 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) =>
       (activeRows[index]?.height ?? DEFAULT_ROW_HEIGHT) + JUSTIFIED_FEED_ROW_GAP,
+    isScrollingResetDelay: 220,
     overscan: JUSTIFIED_FEED_OVERSCAN,
   });
   const virtualRows = rowVirtualizer.getVirtualItems();
+  const isMediaLoadingDeferred =
+    scrollVelocity.isMediaLoadingDeferred || rowVirtualizer.isScrolling;
 
   React.useEffect(
     () => () => {
@@ -159,7 +166,9 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
       density,
       scrollVelocity: scrollVelocity.velocityPxPerMs,
       isFastScrolling: scrollVelocity.isFastScrolling,
-      cacheEntries: cacheStats.entries,
+      isMediaLoadingDeferred,
+      cacheEntries: cacheStats.assetEntries,
+      cacheStateEntries: cacheStats.stateOnlyEntries,
       cacheSizeMb: cacheStats.totalBytes / 1024 / 1024,
     };
     const nextMetricsKey = [
@@ -170,7 +179,9 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
       nextMetrics.density,
       nextMetrics.scrollVelocity.toFixed(2),
       nextMetrics.isFastScrolling,
+      nextMetrics.isMediaLoadingDeferred,
       nextMetrics.cacheEntries,
+      nextMetrics.cacheStateEntries,
       nextMetrics.cacheSizeMb.toFixed(1),
     ].join(":");
 
@@ -182,6 +193,7 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
     activeRows,
     cacheStats,
     density,
+    isMediaLoadingDeferred,
     mediaItems.length,
     onMetricsChange,
     scrollVelocity,
@@ -213,6 +225,7 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
                   rootRef={scrollRef}
                   mediaCache={mediaCache}
                   isFastScrolling={scrollVelocity.isFastScrolling}
+                  isMediaLoadingDeferred={isMediaLoadingDeferred}
                   onCacheChange={notifyCacheChange}
                   style={{
                     position: "absolute",

@@ -12,10 +12,12 @@ export function MediaFeedDebugPanel({ metrics }: Props) {
     ["Rows", metrics.rows.toLocaleString("en-US")],
     ["Visible rows", metrics.visibleRows.toLocaleString("en-US")],
     ["Mounted items", metrics.mountedItems.toLocaleString("en-US")],
-    ["Cached entries", metrics.cacheEntries.toLocaleString("en-US")],
+    ["Cached assets", metrics.cacheEntries.toLocaleString("en-US")],
+    ["State entries", metrics.cacheStateEntries.toLocaleString("en-US")],
     ["Cache size", `${metrics.cacheSizeMb.toFixed(1)} MB`],
     ["Scroll velocity", `${metrics.scrollVelocity.toFixed(2)} px/ms`],
     ["Fast scrolling", String(metrics.isFastScrolling)],
+    ["Media deferred", String(metrics.isMediaLoadingDeferred)],
     ["Density", `${metrics.density} items/row`],
   ];
 

@@ -16,6 +16,7 @@ type Props = {
   rootRef: RefObject<HTMLElement | null>;
   mediaCache: MediaCache;
   isFastScrolling: boolean;
+  isMediaLoadingDeferred: boolean;
   onCacheChange: () => void;
 };
 
@@ -25,6 +26,7 @@ export function MediaCard({
   rootRef,
   mediaCache,
   isFastScrolling,
+  isMediaLoadingDeferred,
   onCacheChange,
 }: Props) {
   const { elementRef, stage } = useMediaVisibilityStage(rootRef);
@@ -41,6 +43,7 @@ export function MediaCard({
         rootRef={rootRef}
         mediaCache={mediaCache}
         isFastScrolling={isFastScrolling}
+        isMediaLoadingDeferred={isMediaLoadingDeferred}
         onCacheChange={onCacheChange}
       />
       {item.type === "video" ? (

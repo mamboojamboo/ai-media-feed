@@ -25,7 +25,9 @@ const INITIAL_METRICS: MediaFeedMetrics = {
   density: 4,
   scrollVelocity: 0,
   isFastScrolling: false,
+  isMediaLoadingDeferred: false,
   cacheEntries: 0,
+  cacheStateEntries: 0,
   cacheSizeMb: 0,
 };
 

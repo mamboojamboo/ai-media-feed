@@ -68,6 +68,17 @@ export function useViewportVideoPlayback({
     }
 
     const saveState = () => {
+      const hasExistingState = Boolean(mediaCache.getVideoState(id));
+      const hasMeaningfulState =
+        hasExistingState ||
+        video.readyState > HTMLMediaElement.HAVE_NOTHING ||
+        video.currentTime > 0 ||
+        Boolean(video.error);
+
+      if (!hasMeaningfulState) {
+        return;
+      }
+
       mediaCache.updateVideoState(id, {
         currentTime: Number.isFinite(video.currentTime) ? video.currentTime : 0,
         duration: Number.isFinite(video.duration) ? video.duration : undefined,

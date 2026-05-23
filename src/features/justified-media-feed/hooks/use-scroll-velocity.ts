@@ -5,11 +5,12 @@ import * as React from "react";
 export type ScrollVelocityState = {
   velocityPxPerMs: number;
   isFastScrolling: boolean;
+  isMediaLoadingDeferred: boolean;
   direction: "up" | "down" | null;
 };
 
 const FAST_SCROLL_THRESHOLD_PX_PER_MS = 1.5;
-const SCROLL_IDLE_MS = 160;
+const SCROLL_IDLE_MS = 220;
 
 export function useScrollVelocity(
   scrollRef: React.RefObject<HTMLElement | null>,
@@ -17,6 +18,7 @@ export function useScrollVelocity(
   const [state, setState] = React.useState<ScrollVelocityState>({
     velocityPxPerMs: 0,
     isFastScrolling: false,
+    isMediaLoadingDeferred: false,
     direction: null,
   });
 
@@ -47,12 +49,14 @@ export function useScrollVelocity(
           ...previousState,
           velocityPxPerMs: 0,
           isFastScrolling: false,
+          isMediaLoadingDeferred: false,
         }));
       }, SCROLL_IDLE_MS);
 
       setState({
         velocityPxPerMs,
         isFastScrolling: Math.abs(velocityPxPerMs) > FAST_SCROLL_THRESHOLD_PX_PER_MS,
+        isMediaLoadingDeferred: true,
         direction: deltaY > 0 ? "down" : deltaY < 0 ? "up" : null,
       });
     };

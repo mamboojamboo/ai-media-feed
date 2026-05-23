@@ -14,6 +14,7 @@ type Props = {
   rootRef: RefObject<HTMLElement | null>;
   mediaCache: MediaCache;
   isFastScrolling: boolean;
+  isMediaLoadingDeferred: boolean;
   onCacheChange: () => void;
   style?: CSSProperties;
 };
@@ -24,6 +25,7 @@ export function JustifiedRow({
   rootRef,
   mediaCache,
   isFastScrolling,
+  isMediaLoadingDeferred,
   onCacheChange,
   style,
 }: Props) {
@@ -52,6 +54,7 @@ export function JustifiedRow({
               rootRef={rootRef}
               mediaCache={mediaCache}
               isFastScrolling={isFastScrolling}
+              isMediaLoadingDeferred={isMediaLoadingDeferred}
               onCacheChange={onCacheChange}
             />
           </div>

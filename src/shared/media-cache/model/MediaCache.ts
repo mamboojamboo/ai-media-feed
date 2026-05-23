@@ -29,6 +29,10 @@ function getInitialVideoState(): VideoPlaybackState {
   };
 }
 
+function hasAsset(entry: MediaCacheEntry) {
+  return Boolean(entry.image?.asset || entry.poster?.asset || entry.video?.asset);
+}
+
 export class MediaCache {
   private readonly entries = new Map<string, MediaCacheEntry>();
   private readonly options: MediaCacheOptions;
@@ -218,9 +222,12 @@ export class MediaCache {
 
   getStats(): MediaCacheStats {
     const entries = [...this.entries.values()];
+    const assetEntries = entries.filter(hasAsset).length;
 
     return {
       entries: entries.length,
+      assetEntries,
+      stateOnlyEntries: entries.length - assetEntries,
       imageEntries: entries.filter((entry) => entry.image?.asset).length,
       posterEntries: entries.filter((entry) => entry.poster?.asset).length,
       videoEntries: entries.filter((entry) => entry.video?.asset).length,
