@@ -102,14 +102,14 @@ function VideoRenderer({
   const videoState = mediaCache.getVideoState(item.id);
   const videoSource = pickMediaSource(item.sources, requestedWidth);
   const videoAsset = mediaCache.get(item.id)?.video?.asset;
-  const shouldAttachVideo = stage !== "far" && !isFastScrolling;
+  const shouldAttachVideo = stage !== "far";
 
   useViewportVideoPlayback({
     id: item.id,
     videoRef,
     rootRef,
     mediaCache,
-    enabled: shouldAttachVideo && stage === "visible",
+    enabled: shouldAttachVideo && stage === "visible" && !isFastScrolling,
     isFastScrolling,
     onCacheChange,
   });
@@ -138,9 +138,12 @@ function VideoRenderer({
         muted
         playsInline
         loop
-        preload={stage === "visible" ? "metadata" : "none"}
+        preload={shouldAttachVideo ? "metadata" : "none"}
         poster={poster.asset?.objectUrl}
         src={shouldAttachVideo ? videoAsset?.objectUrl ?? videoSource.url : undefined}
+        onLoadedData={() => {
+          setHasVideoFrame(true);
+        }}
         onCanPlay={() => {
           setHasVideoFrame(true);
         }}

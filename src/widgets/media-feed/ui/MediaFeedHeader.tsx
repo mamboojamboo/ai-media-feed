@@ -39,6 +39,14 @@ export function MediaFeedHeader({ metrics, density, onDensityChange }: Props) {
                 <Activity className="size-4" aria-hidden="true" />
                 fast scroll: {metrics.isFastScrolling ? "on" : "off"}
               </span>
+              <a
+                href="https://www.pexels.com"
+                target="_blank"
+                rel="noreferrer"
+                className="text-white/45 underline-offset-4 transition-colors hover:text-white hover:underline"
+              >
+                Videos by Pexels
+              </a>
             </div>
           </div>
           <FeedDensityControl value={density} onValueChange={onDensityChange} />

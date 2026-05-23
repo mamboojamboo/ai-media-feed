@@ -13,6 +13,12 @@ pnpm dev
 
 Then open [http://localhost:3000](http://localhost:3000).
 
+To regenerate the local fixture from Pexels, put `PEXELS_API_KEY` in `.env.local` and run:
+
+```bash
+pnpm generate:dataset
+```
+
 For parity with npm-based review environments, the scripts are standard Next scripts:
 
 ```bash
@@ -43,12 +49,13 @@ The root route is a Server Component (`src/app/page.tsx`) that calls `getMediaFe
 The static dataset lives at `src/shared/data/media-dataset.json` and contains 2,000 items:
 
 - 1,400 images, 600 videos.
-- Images use Picsum URLs such as `https://picsum.photos/id/{id}/{width}/{height}`.
-- Videos reuse public Google sample MP4 files from `commondatastorage.googleapis.com`.
-- Video posters also use Picsum, with multiple width buckets.
+- Images use deterministic seeded Picsum URLs such as `https://picsum.photos/seed/{seed}/{width}/{height}` to avoid missing arbitrary image IDs.
+- Videos come from the Pexels Videos API and are written to the local JSON fixture only after each direct MP4 URL passes a ranged `video/*` fetch check.
+- Video posters use Pexels poster images with multiple width buckets and clean query parameters, so they are right-sized without forcing a cropped height.
+- The UI includes a visible Pexels attribution link in the sticky header.
 - Aspect ratios are generated from realistic families: `1:1`, `4:5`, `3:4`, `9:16`, `16:9`, `21:9`, plus small variations.
 
-The dataset was generated deterministically. Reusing 12 physical video files across 600 video items is intentional: the assignment is about layout, virtualization, media lifecycle, cache boundaries, and playback state, not about sourcing 600 unique encoded clips.
+The dataset was generated deterministically for images and from a verified Pexels video pool for video items. The current fixture uses 120 verified Pexels videos across 600 video cards, with 360 unique encoded video URLs. Reuse is intentional and bounded: the assignment is about layout, virtualization, media lifecycle, cache boundaries, and playback state, not about storing hundreds of local video files in the repository.
 
 ## Architecture
 
@@ -139,14 +146,14 @@ Images and posters use width buckets:
 
 Requested width is based on `cellWidth * devicePixelRatio`. If the cache already has an asset with `bestLoadedWidth >= requestedWidth`, that object URL is reused. Otherwise the next larger source is fetched and cached.
 
-For videos, source selection supports multiple encoded widths when the dataset provides them. The sample dataset points both encoded widths at the same public MP4 URL, so right-sized behavior is complete for images/posters and structurally supported for video sources.
+For videos, source selection supports multiple encoded widths when Pexels provides them. Right-sized behavior is complete for images/posters and structurally supported for video sources, with the final MP4 choice constrained by the encodes available from the API.
 
 ## Fast-Scroll Grace
 
 `useScrollVelocity()` tracks `px/ms` and direction on the feed scroll container. If absolute velocity is above `1.5 px/ms`, the feed enters fast-scroll mode:
 
 - new videos do not start
-- video sources are not attached just because an item flashes through the viewport
+- new video playback does not start just because an item flashes through the viewport
 - uncached media loading is gated
 - cached posters/images can still render
 

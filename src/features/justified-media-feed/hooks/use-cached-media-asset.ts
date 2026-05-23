@@ -25,6 +25,8 @@ type State = {
   status: "idle" | "loading" | "loaded" | "error";
 };
 
+const failedAssetRequests = new Set<string>();
+
 function getDevicePixelRatio() {
   if (typeof window === "undefined") {
     return 1;
@@ -65,8 +67,24 @@ export function useCachedMediaAsset({
       return;
     }
 
-    const abortController = new AbortController();
+    if (!sources.length) {
+      return;
+    }
+
     const source = pickMediaSource(sources, requestedWidth);
+    const failedAssetRequestKey = `${kind}:${id}:${source.width}:${source.url}`;
+
+    if (failedAssetRequests.has(failedAssetRequestKey)) {
+      queueMicrotask(() => {
+        setState((previousState) => ({
+          asset: previousState.asset,
+          status: previousState.asset ? "loaded" : "error",
+        }));
+      });
+      return;
+    }
+
+    const abortController = new AbortController();
 
     queueMicrotask(() => {
       if (!abortController.signal.aborted) {
@@ -80,13 +98,23 @@ export function useCachedMediaAsset({
     fetch(source.url, { signal: abortController.signal })
       .then((response) => {
         if (!response.ok) {
-          throw new Error(`Failed to fetch media asset: ${response.status}`);
+          failedAssetRequests.add(failedAssetRequestKey);
+          return undefined;
         }
 
         return response.blob();
       })
       .then((blob) => {
         if (abortController.signal.aborted) {
+          return;
+        }
+
+        if (!blob) {
+          setState((previousState) => ({
+            asset: previousState.asset,
+            status: previousState.asset ? "loaded" : "error",
+          }));
+          onCacheChange();
           return;
         }
 
@@ -98,13 +126,16 @@ export function useCachedMediaAsset({
         setState({ asset, status: "loaded" });
         onCacheChange();
       })
-      .catch((error: unknown) => {
+      .catch(() => {
         if (abortController.signal.aborted) {
           return;
         }
 
-        console.warn(error);
-        setState({ status: "error" });
+        failedAssetRequests.add(failedAssetRequestKey);
+        setState((previousState) => ({
+          asset: previousState.asset,
+          status: previousState.asset ? "loaded" : "error",
+        }));
         onCacheChange();
       });
 

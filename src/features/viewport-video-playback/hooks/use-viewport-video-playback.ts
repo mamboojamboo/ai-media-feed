@@ -35,6 +35,31 @@ export function useViewportVideoPlayback({
   const ratioRef = React.useRef(0);
   const restoredRef = React.useRef(false);
 
+  const getCurrentIntersectionRatio = React.useCallback(
+    (video: HTMLVideoElement) => {
+      const root = rootRef.current;
+      const videoRect = video.getBoundingClientRect();
+      const rootRect = root?.getBoundingClientRect() ?? {
+        top: 0,
+        right: window.innerWidth,
+        bottom: window.innerHeight,
+        left: 0,
+      };
+      const intersectionWidth = Math.max(
+        0,
+        Math.min(videoRect.right, rootRect.right) - Math.max(videoRect.left, rootRect.left),
+      );
+      const intersectionHeight = Math.max(
+        0,
+        Math.min(videoRect.bottom, rootRect.bottom) - Math.max(videoRect.top, rootRect.top),
+      );
+      const videoArea = Math.max(1, videoRect.width * videoRect.height);
+
+      return (intersectionWidth * intersectionHeight) / videoArea;
+    },
+    [rootRef],
+  );
+
   React.useEffect(() => {
     const video = videoRef.current;
 
@@ -143,8 +168,15 @@ export function useViewportVideoPlayback({
       }
     };
 
+    const maybePlayAfterMediaReady = () => {
+      ratioRef.current = getCurrentIntersectionRatio(video);
+      maybePlay();
+    };
+
     if (!enabled || isFastScrolling) {
       pauseAndSave();
+    } else {
+      maybePlayAfterMediaReady();
     }
 
     const observer = new IntersectionObserver(
@@ -166,13 +198,18 @@ export function useViewportVideoPlayback({
     );
 
     observer.observe(video);
+    video.addEventListener("loadedmetadata", maybePlayAfterMediaReady);
+    video.addEventListener("canplay", maybePlayAfterMediaReady);
 
     return () => {
       pauseAndSave();
+      video.removeEventListener("loadedmetadata", maybePlayAfterMediaReady);
+      video.removeEventListener("canplay", maybePlayAfterMediaReady);
       observer.disconnect();
     };
   }, [
     enabled,
+    getCurrentIntersectionRatio,
     id,
     isFastScrolling,
     mediaCache,
