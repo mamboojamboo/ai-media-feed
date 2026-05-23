@@ -114,9 +114,25 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
       }),
     [density, layoutItems, size.width],
   );
-  const { captureAnchor } = useScrollAnchor({ rows: activeRows, scrollRef });
   const scrollVelocity = useScrollVelocity(scrollRef);
   const lastMetricsKeyRef = React.useRef("");
+
+  const rowVirtualizer = useVirtualizer({
+    count: activeRows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (index) =>
+      (activeRows[index]?.height ?? DEFAULT_ROW_HEIGHT) + JUSTIFIED_FEED_ROW_GAP,
+    isScrollingResetDelay: 220,
+    overscan: JUSTIFIED_FEED_OVERSCAN,
+  });
+
+  React.useLayoutEffect(() => {
+    // Row heights are deterministic, but they change whenever the justified layout
+    // is recomputed. Clear TanStack Virtual's size cache before anchor restore.
+    rowVirtualizer.measure();
+  }, [activeRows, rowVirtualizer]);
+
+  const { captureAnchor } = useScrollAnchor({ rows: activeRows, scrollRef });
 
   React.useEffect(() => {
     captureAnchorRef.current = () => {
@@ -134,14 +150,6 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
     [captureAnchor],
   );
 
-  const rowVirtualizer = useVirtualizer({
-    count: activeRows.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: (index) =>
-      (activeRows[index]?.height ?? DEFAULT_ROW_HEIGHT) + JUSTIFIED_FEED_ROW_GAP,
-    isScrollingResetDelay: 220,
-    overscan: JUSTIFIED_FEED_OVERSCAN,
-  });
   const virtualRows = rowVirtualizer.getVirtualItems();
   const isMediaLoadingDeferred =
     scrollVelocity.isMediaLoadingDeferred || rowVirtualizer.isScrolling;
