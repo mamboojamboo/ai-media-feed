@@ -8,8 +8,14 @@ export function binarySearchLast<TItem>(
 
   while (low <= high) {
     const mid = Math.floor((low + high) / 2);
+    const item = items[mid];
 
-    if (predicate(items[mid], mid)) {
+    if (item === undefined) {
+      high = mid - 1;
+      continue;
+    }
+
+    if (predicate(item, mid)) {
       answer = mid;
       low = mid + 1;
     } else {

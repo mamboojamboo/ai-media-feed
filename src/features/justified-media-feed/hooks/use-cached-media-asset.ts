@@ -21,7 +21,7 @@ type Args = {
 };
 
 type State = {
-  asset?: CachedAsset;
+  asset: CachedAsset | undefined;
   status: "idle" | "loading" | "loaded" | "error";
 };
 
@@ -50,7 +50,7 @@ export function useCachedMediaAsset({
       ? mediaCache.getBestImage(id, requestedWidth)
       : mediaCache.getBestPoster(id, requestedWidth);
   const [state, setState] = React.useState<State>(() => {
-    return cachedAsset ? { asset: cachedAsset, status: "loaded" } : { status: "idle" };
+    return { asset: cachedAsset, status: cachedAsset ? "loaded" : "idle" };
   });
 
   React.useEffect(() => {
@@ -145,7 +145,8 @@ export function useCachedMediaAsset({
   }, [enabled, id, kind, mediaCache, onCacheChange, requestedWidth, sources]);
 
   return {
-    ...(cachedAsset ? { asset: cachedAsset, status: "loaded" as const } : state),
+    asset: cachedAsset ?? state.asset,
+    status: cachedAsset ? ("loaded" as const) : state.status,
     requestedWidth,
   };
 }

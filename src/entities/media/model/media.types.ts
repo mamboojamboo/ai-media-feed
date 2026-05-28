@@ -1,21 +1,16 @@
-export type MediaType = "image" | "video";
+import type { z } from "zod";
 
-export type MediaSource = {
-  width: number;
-  height?: number;
-  url: string;
-  mimeType?: string;
-};
+import type {
+  mediaFeedSchema,
+  mediaItemSchema,
+  mediaSourceSchema,
+} from "./media.schema";
 
-export type MediaItem = {
-  id: string;
-  type: MediaType;
-  title: string;
-  width: number;
-  height: number;
-  aspectRatio: number;
-  sources: MediaSource[];
-  posterSources?: MediaSource[];
-  durationMs?: number;
-  tags: string[];
-};
+type MediaItemFromSchema = z.infer<typeof mediaItemSchema>;
+
+export type MediaSource = z.infer<typeof mediaSourceSchema>;
+export type ImageMediaItem = Extract<MediaItemFromSchema, { type: "image" }>;
+export type VideoMediaItem = Extract<MediaItemFromSchema, { type: "video" }>;
+export type MediaItem = ImageMediaItem | VideoMediaItem;
+export type MediaFeed = z.infer<typeof mediaFeedSchema>;
+export type MediaType = MediaItem["type"];

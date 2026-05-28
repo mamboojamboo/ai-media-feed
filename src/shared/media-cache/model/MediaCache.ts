@@ -263,12 +263,12 @@ export class MediaCache {
 
     if (candidate.kind === "image" && entry.image?.asset) {
       URL.revokeObjectURL(entry.image.asset.objectUrl);
-      entry.image = undefined;
+      delete entry.image;
     }
 
     if (candidate.kind === "poster" && entry.poster?.asset) {
       URL.revokeObjectURL(entry.poster.asset.objectUrl);
-      entry.poster = undefined;
+      delete entry.poster;
     }
 
     this.commitEntry(entry);

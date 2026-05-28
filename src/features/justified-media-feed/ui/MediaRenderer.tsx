@@ -5,7 +5,11 @@
 import * as React from "react";
 
 import { pickMediaSource } from "@/entities/media/lib/pick-media-source";
-import type { MediaItem } from "@/entities/media/model/media.types";
+import type {
+  ImageMediaItem,
+  MediaItem,
+  VideoMediaItem,
+} from "@/entities/media/model/media.types";
 import { useViewportVideoPlayback } from "@/features/viewport-video-playback/hooks/use-viewport-video-playback";
 import { cn } from "@/shared/lib/cn";
 import { pickSizeBucket } from "@/shared/lib/pick-size-bucket";
@@ -23,6 +27,14 @@ type Props = {
   isFastScrolling: boolean;
   isMediaLoadingDeferred: boolean;
   onCacheChange: () => void;
+};
+
+type ImageRendererProps = Omit<Props, "item"> & {
+  item: ImageMediaItem;
+};
+
+type VideoRendererProps = Omit<Props, "item"> & {
+  item: VideoMediaItem;
 };
 
 function Placeholder({ isLoading }: { isLoading: boolean }) {
@@ -47,7 +59,7 @@ function ImageRenderer({
   mediaCache,
   isMediaLoadingDeferred,
   onCacheChange,
-}: Props) {
+}: ImageRendererProps) {
   const enabled = stage !== "far" && !isMediaLoadingDeferred;
   const { asset, status } = useCachedMediaAsset({
     id: item.id,
@@ -84,7 +96,7 @@ function VideoRenderer({
   isFastScrolling,
   isMediaLoadingDeferred,
   onCacheChange,
-}: Props) {
+}: VideoRendererProps) {
   const videoRef = React.useRef<HTMLVideoElement | null>(null);
   const [hasVideoFrame, setHasVideoFrame] = React.useState(
     () => mediaCache.getVideoState(item.id)?.canPlay ?? false,
@@ -164,9 +176,9 @@ function VideoRenderer({
 }
 
 export function MediaRenderer(props: Props) {
-  return props.item.type === "image" ? (
-    <ImageRenderer {...props} />
-  ) : (
-    <VideoRenderer {...props} />
-  );
+  if (props.item.type === "image") {
+    return <ImageRenderer {...props} item={props.item} />;
+  }
+
+  return <VideoRenderer {...props} item={props.item} />;
 }

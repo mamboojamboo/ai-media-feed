@@ -17,6 +17,11 @@ export function findAnchorItem(
     binarySearchLast(rows, (row) => row.top <= targetTop),
   );
   const row = rows[rowIndex] ?? rows[0];
+
+  if (!row) {
+    return null;
+  }
+
   const item = row.items[0];
 
   if (!item) {

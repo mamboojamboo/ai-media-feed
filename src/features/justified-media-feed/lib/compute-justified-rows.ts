@@ -26,7 +26,7 @@ function createRowItems(
   return items.map((item, index) => {
     const remainingItems = items.length - index - 1;
     const width =
-      fillWidth && index === items.length - 1
+      fillWidth !== undefined && index === items.length - 1
         ? Math.max(1, fillWidth - x)
         : rowHeight * item.aspectRatio;
 
@@ -73,6 +73,13 @@ export function computeJustifiedRows(
       return;
     }
 
+    const firstItem = rowItems[0];
+    const lastItem = rowItems[rowItems.length - 1];
+
+    if (!firstItem || !lastItem) {
+      return;
+    }
+
     const calculatedHeight = getCalculatedRowHeight(
       rowItems,
       options.containerWidth,
@@ -88,7 +95,7 @@ export function computeJustifiedRows(
       : calculatedHeight;
     const shouldFillWidth = !isLastRow || calculatedHeight === height;
     const row: JustifiedRow = {
-      id: `${rows.length}-${rowItems[0].id}-${rowItems[rowItems.length - 1].id}`,
+      id: `${rows.length}-${firstItem.id}-${lastItem.id}`,
       index: rows.length,
       items: createRowItems(
         rowItems,
@@ -104,8 +111,7 @@ export function computeJustifiedRows(
     top += height + options.rowGap;
   };
 
-  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
-    const item = items[itemIndex];
+  for (const [itemIndex, item] of items.entries()) {
     const isFinalItem = itemIndex === items.length - 1;
 
     if (!pendingItems.length) {

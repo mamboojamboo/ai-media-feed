@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { MediaCache } from "@/shared/media-cache/model/MediaCache";
+import type { VideoPlaybackState } from "@/shared/media-cache/model/media-cache.types";
 
 import {
   VIDEO_PAUSE_THRESHOLD,
@@ -20,6 +21,12 @@ type Args = {
   pauseThreshold?: number;
   onCacheChange: () => void;
 };
+
+function getDurationPatch(
+  video: HTMLVideoElement,
+): Partial<Pick<VideoPlaybackState, "duration">> {
+  return Number.isFinite(video.duration) ? { duration: video.duration } : {};
+}
 
 export function useViewportVideoPlayback({
   id,
@@ -81,7 +88,7 @@ export function useViewportVideoPlayback({
 
       mediaCache.updateVideoState(id, {
         currentTime: Number.isFinite(video.currentTime) ? video.currentTime : 0,
-        duration: Number.isFinite(video.duration) ? video.duration : undefined,
+        ...getDurationPatch(video),
         metadataLoaded: video.readyState >= HTMLMediaElement.HAVE_METADATA,
         canPlay: video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
         status: video.error ? "error" : video.readyState > 0 ? "loaded" : "idle",
@@ -144,7 +151,7 @@ export function useViewportVideoPlayback({
       if (!video.paused) {
         mediaCache.updateVideoState(id, {
           currentTime: video.currentTime,
-          duration: Number.isFinite(video.duration) ? video.duration : undefined,
+          ...getDurationPatch(video),
           metadataLoaded: video.readyState >= HTMLMediaElement.HAVE_METADATA,
           canPlay: video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA,
           status: video.error ? "error" : "loaded",

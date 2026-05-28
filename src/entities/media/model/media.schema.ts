@@ -7,19 +7,28 @@ export const mediaSourceSchema = z.object({
   mimeType: z.string().min(1).optional(),
 });
 
+const mediaItemBaseSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  aspectRatio: z.number().positive(),
+  sources: z.array(mediaSourceSchema).nonempty(),
+  tags: z.array(z.string().min(1)),
+});
+
+const imageMediaItemSchema = mediaItemBaseSchema.extend({
+  type: z.literal("image"),
+});
+
+const videoMediaItemSchema = mediaItemBaseSchema.extend({
+  type: z.literal("video"),
+  posterSources: z.array(mediaSourceSchema).nonempty(),
+  durationMs: z.number().int().positive().optional(),
+});
+
 export const mediaItemSchema = z
-  .object({
-    id: z.string().min(1),
-    type: z.enum(["image", "video"]),
-    title: z.string().min(1),
-    width: z.number().int().positive(),
-    height: z.number().int().positive(),
-    aspectRatio: z.number().positive(),
-    sources: z.array(mediaSourceSchema).min(1),
-    posterSources: z.array(mediaSourceSchema).optional(),
-    durationMs: z.number().int().positive().optional(),
-    tags: z.array(z.string().min(1)),
-  })
+  .discriminatedUnion("type", [imageMediaItemSchema, videoMediaItemSchema])
   .superRefine((item, ctx) => {
     const expectedAspectRatio = item.width / item.height;
     const diff = Math.abs(expectedAspectRatio - item.aspectRatio);
@@ -29,14 +38,6 @@ export const mediaItemSchema = z
         code: z.ZodIssueCode.custom,
         message: `aspectRatio does not match width / height for item ${item.id}`,
         path: ["aspectRatio"],
-      });
-    }
-
-    if (item.type === "video" && !item.posterSources?.length) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "video item should provide posterSources",
-        path: ["posterSources"],
       });
     }
   });
