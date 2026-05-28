@@ -1,6 +1,6 @@
 # Justified Mixed Media Feed
 
-Production-style test assignment for a Senior Frontend Engineer role: a virtualized AI media feed with 2,000 mixed image/video items laid out as justified rows.
+A virtualized AI media feed with 2,000 mixed image/video items laid out as justified rows.
 
 ## Setup
 
@@ -29,14 +29,18 @@ npm run build
 
 ## What Is Implemented
 
-- R1: custom justified-row layout algorithm, no CSS masonry/grid shortcut.
-- R2: 2,000 mixed media items with row-level TanStack Virtual virtualization.
-- R3: user-controlled density (`2 3 4 5 6 8`) with item-based scroll anchoring.
-- R4: lazy/proximity media loading and viewport-driven video playback.
-- S2: velocity-based fast-scroll grace.
-- S3: bounded browser-side object URL media cache plus video playback state.
-- S4: right-sized image and poster source selection.
-- S5: ResizeObserver + requestAnimationFrame resize handling with anchor restore.
+- Custom justified-row layout algorithm without relying on CSS masonry or grid shortcuts.
+- Full feed rendering for 2,000 mixed media items, virtualized at the row level with TanStack Virtual.
+- User-controlled layout density with (`2, 3, 4, 5, 6, 8`) items per row.
+- Item-based scroll anchoring, so the current viewport position is preserved when the layout density changes.
+- Lazy and proximity-based media loading to avoid loading unnecessary images and videos.
+- Viewport-driven video playback, so videos only play when they are relevant to the visible area.
+- Velocity-based fast-scroll handling to keep scrolling smooth during rapid navigation.
+- Bounded browser-side object URL media cache for loaded media resources.
+- Video playback state preservation for cached media.
+- Right-sized image and poster source selection based on the rendered item size.
+- Resize handling with `ResizeObserver` and `requestAnimationFrame`.
+- Scroll anchor restoration after resize and layout recalculation.
 
 ## Why Next.js 16
 
@@ -55,7 +59,7 @@ The static dataset lives at `src/shared/data/media-dataset.json` and contains 2,
 - The UI includes a visible Pexels attribution link in the sticky header.
 - Aspect ratios are generated from realistic families: `1:1`, `4:5`, `3:4`, `9:16`, `16:9`, `21:9`, plus small variations.
 
-The dataset was generated deterministically for images and from a verified short Pexels video pool for video items. The current fixture uses 120 verified Pexels videos capped at 30 seconds across 600 video cards, with 360 unique encoded video URLs. Reuse is intentional and bounded: the assignment is about layout, virtualization, media lifecycle, cache boundaries, and playback state, not about storing hundreds of local video files in the repository.
+The dataset was generated deterministically for images and from a verified short Pexels video pool for video items. The current fixture uses 120 verified Pexels videos capped at 30 seconds across 600 video cards, with 360 unique encoded video URLs. Reuse is intentional and bounded: the project is about layout, virtualization, media lifecycle, cache boundaries, and playback state, not about storing hundreds of local video files in the repository.
 
 ## Architecture
 
@@ -80,8 +84,8 @@ The code is FSD-inspired:
 It accumulates items until the projected row is close to the target density, then computes:
 
 ```ts
-availableWidth = containerWidth - gap * (items.length - 1)
-rowHeight = availableWidth / sumAspectRatios
+availableWidth = containerWidth - gap * (items.length - 1);
+rowHeight = availableWidth / sumAspectRatios;
 ```
 
 Each item width is `rowHeight * aspectRatio`, so the original aspect ratio is preserved without crop. Full rows fill the container width; the last row is capped by `targetRowHeight` and `maxLastRowHeight`, so a sparse final row is allowed to be shorter instead of being stretched into a giant row.
@@ -98,9 +102,9 @@ Density changes and resize do not preserve raw `scrollTop`. Instead, the feed ca
 
 ```ts
 type ScrollAnchor = {
-  itemId: string
-  offsetTopInViewport: number
-}
+  itemId: string;
+  offsetTopInViewport: number;
+};
 ```
 
 After rows are recomputed, the app finds the new top for the same item and restores `scrollTop = newItemTop - offsetTopInViewport` inside a layout effect. The same mechanism is wired into ResizeObserver updates.
@@ -140,7 +144,7 @@ On eviction, object URLs are revoked with `URL.revokeObjectURL()`. The app does 
 Images and posters use width buckets:
 
 ```ts
-[320, 480, 640, 960, 1280, 1600]
+[320, 480, 640, 960, 1280, 1600];
 ```
 
 Requested width is based on `cellWidth * devicePixelRatio`. If the cache already has an asset with `bestLoadedWidth >= requestedWidth`, that object URL is reused. Otherwise the next larger source is fetched and cached.
@@ -161,7 +165,7 @@ The debug panel shows velocity and fast-scroll state.
 
 ## Skipped Stretch Goals
 
-I intentionally skipped full FLIP transitions for column-count changes because preserving virtualization correctness, scroll anchoring, and resize stability was more important for this task.
+I intentionally skipped full FLIP transitions for column-count changes because preserving virtualization correctness, scroll anchoring, and resize stability was more important for this project.
 
 The scroll-anchor mechanism could be reused for prepend scenarios, but I did not add a live-data demo to avoid feature creep.
 
@@ -170,14 +174,3 @@ The scroll-anchor mechanism could be reused for prepend scenarios, but I did not
 - Browser-level visual verification depends on a local browser automation tool. The code has been verified with `pnpm lint`, `pnpm build`, and local HTTP rendering.
 - Public sample MP4s can be slow depending on network and CDN behavior. The renderer avoids eager video blob downloads for that reason.
 - A production product could add a small integration test around row geometry and anchor restore.
-
-## Loom Walkthrough Plan
-
-1. Show the app running with 2,000 mixed items.
-2. Scroll through the feed and point at bounded visible rows/mounted items in the debug panel.
-3. Show videos autoplay when visible and pause offscreen.
-4. Scroll away and back to show video position restore.
-5. Change items per row and show anchor preservation.
-6. Resize the browser and show stable justified rows.
-7. Fast-scroll and point at the fast-scroll indicator.
-8. Mention object URL cache, right-sized sources, and skipped S1/S6 trade-offs.
