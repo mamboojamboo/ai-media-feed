@@ -71,7 +71,6 @@ export const VirtualizedJustifiedFeed = React.forwardRef<
             previousStats.stateOnlyEntries === nextStats.stateOnlyEntries &&
             previousStats.imageEntries === nextStats.imageEntries &&
             previousStats.posterEntries === nextStats.posterEntries &&
-            previousStats.videoEntries === nextStats.videoEntries &&
             previousStats.totalBytes === nextStats.totalBytes
           ) {
             return previousStats;

@@ -12,7 +12,6 @@ const DEFAULT_OPTIONS: MediaCacheOptions = {
   maxBytes: 150 * 1024 * 1024,
   maxImageEntries: 300,
   maxPosterEntries: 300,
-  maxVideoEntries: 20,
 };
 
 function touchAsset(asset: CachedAsset) {
@@ -30,7 +29,7 @@ function getInitialVideoState(): VideoPlaybackState {
 }
 
 function hasAsset(entry: MediaCacheEntry) {
-  return Boolean(entry.image?.asset || entry.poster?.asset || entry.video?.asset);
+  return Boolean(entry.image?.asset || entry.poster?.asset);
 }
 
 export class MediaCache {
@@ -149,37 +148,6 @@ export class MediaCache {
     this.commitEntry(entry);
   }
 
-  putVideoBlob(id: string, blob: Blob): CachedAsset | undefined {
-    const stats = this.getStats();
-
-    if (stats.videoEntries >= this.options.maxVideoEntries) {
-      this.evictVideoAsset();
-    }
-
-    if (blob.size > this.options.maxBytes * 0.35) {
-      return undefined;
-    }
-
-    const entry = this.ensureEntry(id);
-    const previousAsset = entry.video?.asset;
-    const asset = createObjectUrl(blob);
-
-    if (previousAsset) {
-      URL.revokeObjectURL(previousAsset.objectUrl);
-    }
-
-    entry.video = {
-      ...getInitialVideoState(),
-      ...entry.video,
-      asset,
-      status: "loaded",
-    };
-    this.commitEntry(entry);
-    this.evictIfNeeded();
-
-    return asset;
-  }
-
   evictIfNeeded(): void {
     let stats = this.getStats();
     const candidates = sortLruCandidates(this.getLruCandidates());
@@ -188,8 +156,7 @@ export class MediaCache {
       candidates.length &&
       (stats.totalBytes > this.options.maxBytes ||
         stats.imageEntries > this.options.maxImageEntries ||
-        stats.posterEntries > this.options.maxPosterEntries ||
-        stats.videoEntries > this.options.maxVideoEntries)
+        stats.posterEntries > this.options.maxPosterEntries)
     ) {
       const candidate = candidates.shift();
 
@@ -212,9 +179,6 @@ export class MediaCache {
         URL.revokeObjectURL(entry.poster.asset.objectUrl);
       }
 
-      if (entry.video?.asset) {
-        URL.revokeObjectURL(entry.video.asset.objectUrl);
-      }
     }
 
     this.entries.clear();
@@ -230,7 +194,6 @@ export class MediaCache {
       stateOnlyEntries: entries.length - assetEntries,
       imageEntries: entries.filter((entry) => entry.image?.asset).length,
       posterEntries: entries.filter((entry) => entry.poster?.asset).length,
-      videoEntries: entries.filter((entry) => entry.video?.asset).length,
       totalBytes: entries.reduce((sum, entry) => sum + this.getEntryBytes(entry), 0),
     };
   }
@@ -261,11 +224,7 @@ export class MediaCache {
   }
 
   private getEntryBytes(entry: MediaCacheEntry) {
-    return (
-      (entry.image?.asset.bytes ?? 0) +
-      (entry.poster?.asset.bytes ?? 0) +
-      (entry.video?.asset?.bytes ?? 0)
-    );
+    return (entry.image?.asset.bytes ?? 0) + (entry.poster?.asset.bytes ?? 0);
   }
 
   private getLruCandidates(): LruCandidate[] {
@@ -290,14 +249,6 @@ export class MediaCache {
         });
       }
 
-      if (entry.video?.asset) {
-        candidates.push({
-          id: entry.id,
-          kind: "video",
-          lastAccessedAt: entry.video.asset.lastAccessedAt,
-          bytes: entry.video.asset.bytes,
-        });
-      }
     }
 
     return candidates;
@@ -320,14 +271,6 @@ export class MediaCache {
       entry.poster = undefined;
     }
 
-    if (candidate.kind === "video" && entry.video?.asset) {
-      URL.revokeObjectURL(entry.video.asset.objectUrl);
-      entry.video = {
-        ...entry.video,
-        asset: undefined,
-      };
-    }
-
     this.commitEntry(entry);
 
     if (!entry.image && !entry.poster && !entry.video) {
@@ -335,13 +278,4 @@ export class MediaCache {
     }
   }
 
-  private evictVideoAsset() {
-    const videoCandidate = sortLruCandidates(this.getLruCandidates()).find(
-      (candidate) => candidate.kind === "video",
-    );
-
-    if (videoCandidate) {
-      this.removeAsset(videoCandidate);
-    }
-  }
 }

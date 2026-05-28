@@ -28,9 +28,7 @@ export type MediaCacheEntry = {
     asset: CachedAsset;
     status: "loading" | "loaded" | "error";
   };
-  video?: VideoPlaybackState & {
-    asset?: CachedAsset;
-  };
+  video?: VideoPlaybackState;
 };
 
 export type MediaCacheStats = {
@@ -39,7 +37,6 @@ export type MediaCacheStats = {
   stateOnlyEntries: number;
   imageEntries: number;
   posterEntries: number;
-  videoEntries: number;
   totalBytes: number;
 };
 
@@ -47,5 +44,4 @@ export type MediaCacheOptions = {
   maxBytes: number;
   maxImageEntries: number;
   maxPosterEntries: number;
-  maxVideoEntries: number;
 };

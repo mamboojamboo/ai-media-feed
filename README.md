@@ -50,12 +50,12 @@ The static dataset lives at `src/shared/data/media-dataset.json` and contains 2,
 
 - 1,400 images, 600 videos.
 - Images use deterministic seeded Picsum URLs such as `https://picsum.photos/seed/{seed}/{width}/{height}` to avoid missing arbitrary image IDs.
-- Videos come from the Pexels Videos API and are written to the local JSON fixture only after each direct MP4 URL passes a ranged `video/*` fetch check.
+- Videos come from the Pexels Videos API, are capped at 30 seconds, and are written to the local JSON fixture only after each direct MP4 URL passes a ranged `video/*` fetch check.
 - Video posters use Pexels poster images with multiple width buckets and clean query parameters, so they are right-sized without forcing a cropped height.
 - The UI includes a visible Pexels attribution link in the sticky header.
 - Aspect ratios are generated from realistic families: `1:1`, `4:5`, `3:4`, `9:16`, `16:9`, `21:9`, plus small variations.
 
-The dataset was generated deterministically for images and from a verified Pexels video pool for video items. The current fixture uses 120 verified Pexels videos across 600 video cards, with 360 unique encoded video URLs. Reuse is intentional and bounded: the assignment is about layout, virtualization, media lifecycle, cache boundaries, and playback state, not about storing hundreds of local video files in the repository.
+The dataset was generated deterministically for images and from a verified short Pexels video pool for video items. The current fixture uses 120 verified Pexels videos capped at 30 seconds across 600 video cards, with 360 unique encoded video URLs. Reuse is intentional and bounded: the assignment is about layout, virtualization, media lifecycle, cache boundaries, and playback state, not about storing hundreds of local video files in the repository.
 
 ## Architecture
 
@@ -125,16 +125,15 @@ Multiple visible videos may play at once. During fast scroll, new videos are not
 
 ## Media Cache
 
-The app uses a bounded object URL media cache. It preserves loaded image/poster assets and video playback state across virtualization. The cache is LRU-limited to avoid unbounded memory growth. Video blobs are cached only for a limited number of short clips; otherwise the app relies on browser HTTP cache.
+The app uses a bounded object URL media cache for loaded images and video posters, and it preserves video playback state across virtualization. The cache is LRU-limited to avoid unbounded memory growth. MP4 files are not copied into app-managed blobs; the `<video>` element uses the selected Pexels URL directly and relies on the browser HTTP cache for media bytes.
 
 Current limits:
 
 - `maxBytes`: 150 MB
 - `maxImageEntries`: 300
 - `maxPosterEntries`: 300
-- `maxVideoEntries`: 20
 
-On eviction, object URLs are revoked with `URL.revokeObjectURL()`. The app does not try to preserve decoded browser frames; it preserves controlled object URLs, loaded state, and playback state.
+On eviction, object URLs are revoked with `URL.revokeObjectURL()`. The app does not try to preserve decoded browser frames; it preserves controlled image/poster object URLs, loaded state, and video playback state.
 
 ## Right-Sized Media
 

@@ -8,6 +8,10 @@ const VIDEO_RATIO_PER_TEN = 3;
 const SIZE_BUCKETS = [320, 480, 640, 960, 1280, 1600];
 const TARGET_PEXELS_VIDEOS = Number(process.env.PEXELS_VIDEO_POOL_SIZE ?? 120);
 const PEXELS_PER_PAGE = 80;
+const PEXELS_PAGES_PER_QUERY = Number(process.env.PEXELS_PAGES_PER_QUERY ?? 4);
+const MAX_PEXELS_VIDEO_DURATION_SECONDS = Number(
+  process.env.PEXELS_MAX_VIDEO_DURATION_SECONDS ?? 30,
+);
 const PEXELS_ENDPOINT = "https://api.pexels.com/v1/videos/search";
 
 const BASE_RATIOS = [
@@ -241,16 +245,21 @@ async function collectPexelsVideos() {
   const candidatesById = new Map();
 
   for (const search of PEXELS_QUERIES) {
-    for (const page of [1, 2]) {
+    for (let page = 1; page <= PEXELS_PAGES_PER_QUERY; page += 1) {
       const payload = await fetchPexelsPage({ ...search, page, apiKey });
 
       for (const video of payload.videos ?? []) {
-        if (!candidatesById.has(video.id)) {
+        const durationSeconds = toPositiveInteger(video.duration, 12);
+
+        if (
+          durationSeconds <= MAX_PEXELS_VIDEO_DURATION_SECONDS &&
+          !candidatesById.has(video.id)
+        ) {
           candidatesById.set(video.id, {
             id: video.id,
             width: toPositiveInteger(video.width, 1280),
             height: toPositiveInteger(video.height, 720),
-            durationMs: toPositiveInteger(video.duration, 12) * 1000,
+            durationMs: durationSeconds * 1000,
             image: video.image,
             photographer: video.user?.name ?? "Pexels creator",
             query: search.query,
@@ -300,7 +309,7 @@ async function collectPexelsVideos() {
     }
 
     console.log(
-      `Verified ${verifiedVideos.length}/${TARGET_PEXELS_VIDEOS} Pexels videos`,
+      `Verified ${verifiedVideos.length}/${TARGET_PEXELS_VIDEOS} Pexels videos <= ${MAX_PEXELS_VIDEO_DURATION_SECONDS}s`,
     );
 
     if (verifiedVideos.length >= TARGET_PEXELS_VIDEOS) {
@@ -400,6 +409,7 @@ async function main() {
         items: items.length,
         images: imageCount,
         videos: videoCount,
+        maxVideoDurationSeconds: MAX_PEXELS_VIDEO_DURATION_SECONDS,
         verifiedPexelsVideos: pexelsVideos.length,
         uniqueVideoUrls: uniqueVideoUrls.size,
         output: OUTPUT_PATH,

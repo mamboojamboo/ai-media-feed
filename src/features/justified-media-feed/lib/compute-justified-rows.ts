@@ -43,6 +43,14 @@ function createRowItems(
   });
 }
 
+function getCalculatedRowHeight(items: LayoutItem[], containerWidth: number, gap: number) {
+  const gapWidth = gap * Math.max(0, items.length - 1);
+  const availableWidth = containerWidth - gapWidth;
+  const aspectRatioSum = items.reduce((sum, item) => sum + item.aspectRatio, 0);
+
+  return availableWidth / aspectRatioSum;
+}
+
 export function computeJustifiedRows(
   items: LayoutItem[],
   options: ComputeRowsOptions,
@@ -65,10 +73,11 @@ export function computeJustifiedRows(
       return;
     }
 
-    const gapWidth = options.gap * Math.max(0, rowItems.length - 1);
-    const availableWidth = options.containerWidth - gapWidth;
-    const aspectRatioSum = rowItems.reduce((sum, item) => sum + item.aspectRatio, 0);
-    const calculatedHeight = availableWidth / aspectRatioSum;
+    const calculatedHeight = getCalculatedRowHeight(
+      rowItems,
+      options.containerWidth,
+      options.gap,
+    );
     const height = isLastRow
       ? Math.min(
           calculatedHeight,
@@ -76,8 +85,8 @@ export function computeJustifiedRows(
           options.maxLastRowHeight,
           options.maxRowHeight,
         )
-      : clamp(calculatedHeight, options.minRowHeight, options.maxRowHeight);
-    const shouldFillWidth = !isLastRow && calculatedHeight === height;
+      : calculatedHeight;
+    const shouldFillWidth = !isLastRow || calculatedHeight === height;
     const row: JustifiedRow = {
       id: `${rows.length}-${rowItems[0].id}-${rowItems[rowItems.length - 1].id}`,
       index: rows.length,
@@ -95,18 +104,44 @@ export function computeJustifiedRows(
     top += height + options.rowGap;
   };
 
-  for (const item of items) {
-    pendingItems.push(item);
-    pendingAspectRatioSum += item.aspectRatio;
+  for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
+    const item = items[itemIndex];
+    const isFinalItem = itemIndex === items.length - 1;
 
-    if (
-      pendingItems.length >= options.targetItemsPerRow ||
-      pendingAspectRatioSum >= targetAspectRatioSum
-    ) {
-      pushRow(pendingItems, false);
-      pendingItems = [];
-      pendingAspectRatioSum = 0;
+    if (!pendingItems.length) {
+      pendingItems.push(item);
+      pendingAspectRatioSum = item.aspectRatio;
+      continue;
     }
+
+    const nextItems = [...pendingItems, item];
+    const nextAspectRatioSum = pendingAspectRatioSum + item.aspectRatio;
+
+    if (!isFinalItem && nextAspectRatioSum >= targetAspectRatioSum) {
+      const currentHeight = getCalculatedRowHeight(
+        pendingItems,
+        options.containerWidth,
+        options.gap,
+      );
+      const nextHeight = getCalculatedRowHeight(nextItems, options.containerWidth, options.gap);
+      const currentDistance = Math.abs(currentHeight - targetRowHeight);
+      const nextDistance = Math.abs(nextHeight - targetRowHeight);
+
+      if (currentDistance <= nextDistance) {
+        pushRow(pendingItems, false);
+        pendingItems = [item];
+        pendingAspectRatioSum = item.aspectRatio;
+      } else {
+        pushRow(nextItems, false);
+        pendingItems = [];
+        pendingAspectRatioSum = 0;
+      }
+
+      continue;
+    }
+
+    pendingItems = nextItems;
+    pendingAspectRatioSum = nextAspectRatioSum;
   }
 
   pushRow(pendingItems, true);

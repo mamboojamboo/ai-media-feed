@@ -1,6 +1,6 @@
 export type LruCandidate = {
   id: string;
-  kind: "image" | "poster" | "video";
+  kind: "image" | "poster";
   lastAccessedAt: number;
   bytes: number;
 };
