@@ -174,3 +174,7 @@ The scroll-anchor mechanism could be reused for prepend scenarios, but I did not
 - Browser-level visual verification depends on a local browser automation tool. The code has been verified with `pnpm lint`, `pnpm build`, and local HTTP rendering.
 - Public sample MP4s can be slow depending on network and CDN behavior. The renderer avoids eager video blob downloads for that reason.
 - A production product could add a small integration test around row geometry and anchor restore.
+
+## Live Demo
+
+[Open live demo](https://ai-media-feed.vercel.app/)
