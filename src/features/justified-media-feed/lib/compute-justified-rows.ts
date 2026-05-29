@@ -60,15 +60,11 @@ export function computeJustifiedRows(
   }
 
   const targetRowHeight = getTargetRowHeight(options);
-  const targetAspectRatioSum =
-    (options.containerWidth - options.gap * Math.max(0, options.targetItemsPerRow - 1)) /
-    targetRowHeight;
+  const targetItemsPerRow = Math.max(1, Math.floor(options.targetItemsPerRow));
   const rows: JustifiedRow[] = [];
   let top = 0;
-  let pendingItems: LayoutItem[] = [];
-  let pendingAspectRatioSum = 0;
 
-  const pushRow = (rowItems: LayoutItem[], isLastRow: boolean) => {
+  const pushRow = (rowItems: LayoutItem[], isIncompleteLastRow: boolean) => {
     if (!rowItems.length) {
       return;
     }
@@ -85,7 +81,7 @@ export function computeJustifiedRows(
       options.containerWidth,
       options.gap,
     );
-    const height = isLastRow
+    const height = isIncompleteLastRow
       ? Math.min(
           calculatedHeight,
           targetRowHeight,
@@ -93,7 +89,7 @@ export function computeJustifiedRows(
           options.maxRowHeight,
         )
       : calculatedHeight;
-    const shouldFillWidth = !isLastRow || calculatedHeight === height;
+    const shouldFillWidth = !isIncompleteLastRow || calculatedHeight === height;
     const row: JustifiedRow = {
       id: `${rows.length}-${firstItem.id}-${lastItem.id}`,
       index: rows.length,
@@ -111,46 +107,12 @@ export function computeJustifiedRows(
     top += height + options.rowGap;
   };
 
-  for (const [itemIndex, item] of items.entries()) {
-    const isFinalItem = itemIndex === items.length - 1;
+  for (let itemIndex = 0; itemIndex < items.length; itemIndex += targetItemsPerRow) {
+    const rowItems = items.slice(itemIndex, itemIndex + targetItemsPerRow);
+    const isIncompleteLastRow = rowItems.length < targetItemsPerRow;
 
-    if (!pendingItems.length) {
-      pendingItems.push(item);
-      pendingAspectRatioSum = item.aspectRatio;
-      continue;
-    }
-
-    const nextItems = [...pendingItems, item];
-    const nextAspectRatioSum = pendingAspectRatioSum + item.aspectRatio;
-
-    if (!isFinalItem && nextAspectRatioSum >= targetAspectRatioSum) {
-      const currentHeight = getCalculatedRowHeight(
-        pendingItems,
-        options.containerWidth,
-        options.gap,
-      );
-      const nextHeight = getCalculatedRowHeight(nextItems, options.containerWidth, options.gap);
-      const currentDistance = Math.abs(currentHeight - targetRowHeight);
-      const nextDistance = Math.abs(nextHeight - targetRowHeight);
-
-      if (currentDistance <= nextDistance) {
-        pushRow(pendingItems, false);
-        pendingItems = [item];
-        pendingAspectRatioSum = item.aspectRatio;
-      } else {
-        pushRow(nextItems, false);
-        pendingItems = [];
-        pendingAspectRatioSum = 0;
-      }
-
-      continue;
-    }
-
-    pendingItems = nextItems;
-    pendingAspectRatioSum = nextAspectRatioSum;
+    pushRow(rowItems, isIncompleteLastRow);
   }
-
-  pushRow(pendingItems, true);
 
   return rows;
 }

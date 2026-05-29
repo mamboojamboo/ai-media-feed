@@ -81,14 +81,14 @@ The code is FSD-inspired:
 
 `computeJustifiedRows(items, options)` is a pure function with no React or DOM dependencies.
 
-It accumulates items until the projected row is close to the target density, then computes:
+It chunks full rows by the selected item count (`2, 3, 4, 5, 6, 8`). A density value of `3` therefore means every full row contains exactly three media items; only the final incomplete row may contain fewer. For each row it computes:
 
 ```ts
 availableWidth = containerWidth - gap * (items.length - 1);
 rowHeight = availableWidth / sumAspectRatios;
 ```
 
-Each item width is `rowHeight * aspectRatio`, so the original aspect ratio is preserved without crop. Full rows fill the container width; the last row is capped by `targetRowHeight` and `maxLastRowHeight`, so a sparse final row is allowed to be shorter instead of being stretched into a giant row.
+Each item width is `rowHeight * aspectRatio`, so the original aspect ratio is preserved without crop. Full rows fill the container width; the sparse final row is capped by `targetRowHeight` and `maxLastRowHeight`, so it is allowed to be shorter instead of being stretched into a giant row.
 
 ## Virtualization
 
